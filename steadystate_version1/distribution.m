@@ -77,3 +77,5 @@ while (total_err > crit.eps && iter < 100)
     last_moments = moments_new;
     iter = iter + 1;
 end
+
+surf(reshape(exp(g_value) .* para.tau_g .* g0, crit.m_g(2), crit.m_g(1)));

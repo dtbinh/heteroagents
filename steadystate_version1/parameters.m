@@ -24,11 +24,11 @@ para.eta = 2.0;
 
 crit.eps = 1e-8;
 crit.dampen = 0.1;
-crit.kbound = [1e-7, 25.0]; % TODO: calculate the upper bound
+crit.kbound = [0.01, 25.0]; % TODO: calculate the upper bound
 % crit.sbound = [-1.0, 1.0];
-crit.m_g = [8, 8]; %s, k
+crit.m_g = [10, 20]; %s, k
 crit.m_s = 3;
-crit.n_s = 3;
+crit.n_s = 5;
 crit.n_k = 15;
 crit.n_g = 3;
 
