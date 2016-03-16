@@ -25,15 +25,7 @@ for i = 1:crit.m_g(1)
 end
 c0_hat = max(c0_hat, crit.eps);
 F_c0_hat = logncdf(c0_hat, para.mu_c, para.sigma_c);
-f = @(x)lognpdf(x, para.mu_c, para.sigma_c) .* x;
-E_c0_hat = zeros(crit.m_g(1), crit.m_g(2));
-for i = 1:crit.m_g(1)
-    for j = 1:crit.m_g(2)
-        E_c0_hat(i, j) = integral(f, 0, c0_hat(i, j));
-    end
-end
 F_c0_hat_vec = reshape(F_c0_hat', crit.m_g(1) * crit.m_g(2), 1);
-E_c0_hat_vec = reshape(E_c0_hat', crit.m_g(1) * crit.m_g(2), 1);
 
 sp_mat = para.rho_s * repmat(para.ggrid(:, 1), 1, crit.m_s) + para.sigma_s * repmat(para.w_s', crit.m_g(3), 1);
 
@@ -56,6 +48,7 @@ iter = 0;
 while (total_err > crit.eps && iter < 100)
     f = @(g) consistency(g, moments, idx, para, crit);
     g = fminunc(f, zeros(crit.n_g * (crit.n_g + 3) / 2, 1), options);
+    % [g0_inv, ~, ~, err, g0, g_value] = consistency(g, moments, idx, para, crit);
     err = 1e5;
     sub_iter = 0;
     while (err > crit.eps && sub_iter < 200)
@@ -68,7 +61,7 @@ while (total_err > crit.eps && iter < 100)
     moments_new(1) = (g0 .* exp(g_value) .* (sp_mat * para.tau_s))' * para.tau_g;
     moments_new(2) = (g0 .* exp(g_value) .* (F_c0_hat_vec .* ka_vec + (1 - F_c0_hat_vec) .* kn_vec))' * para.tau_g;
     for i = 3:crit.n_g * (crit.n_g + 3) / 2
-        moments_new(i) = (g0 .* exp(g_value) .* ((sp_mat - moments_new(1)) .^ idx(i, 1) * para.tau_s) .* (F_c0_hat_vec .* (ka_vec - moments_new(2)) .^ idx(i, 2) + (1 - F_c0_hat_vec) .* (kn_vec - moments_new(2)) .^ idx(i, 2)))' * para.tau_g;
+        moments_new(i) = (g0 .* exp(g_value) .* ((sp_mat - moments(1)) .^ idx(i, 1) * para.tau_s) .* (F_c0_hat_vec .* (ka_vec - moments(2)) .^ idx(i, 2) + (1 - F_c0_hat_vec) .* (kn_vec - moments_new(2)) .^ idx(i, 2)))' * para.tau_g;
     end
 
     total_err = sum((moments_new - last_moments) .^ 2);
@@ -78,4 +71,4 @@ while (total_err > crit.eps && iter < 100)
     iter = iter + 1;
 end
 
-surf(reshape(exp(g_value) .* para.tau_g .* g0, crit.m_g(2), crit.m_g(1)));
+surf(reshape(exp(g_value) .* g0 .* para.tau_g, crit.m_g(2), crit.m_g(1)));

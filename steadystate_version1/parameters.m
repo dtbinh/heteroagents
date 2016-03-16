@@ -27,7 +27,7 @@ crit.dampen = 0.1;
 crit.kbound = [0.01, 25.0]; % TODO: calculate the upper bound
 % crit.sbound = [-1.0, 1.0];
 crit.m_g = [10, 20]; %s, k
-crit.m_s = 3;
+crit.m_s = 5;
 crit.n_s = 5;
 crit.n_k = 15;
 crit.n_g = 3;
@@ -57,6 +57,7 @@ para.kgrid = para.kgrid';
 clear curv;
 %}
 
+%{
 % Compute Gauss-Legendre weights and nodes
 [w_s, para.moment_sgrid] = GaussLegendre(crit.m_g(1));
 [w_k, para.moment_kgrid] = GaussLegendre(crit.m_g(2));
@@ -64,6 +65,10 @@ para.moment_sgrid = (para.moment_sgrid + 1) / 2 * (crit.sbound(2) - crit.sbound(
 para.moment_kgrid = (para.moment_kgrid + 1) / 2 * (crit.kbound(2) - crit.kbound(1)) + crit.kbound(1);
 para.tau_g = w_k * w_s'; % Notice that matlab collapses by column
 para.tau_g = para.tau_g(:);
+%}
+% If I use some other self-defined grids instead
+para.moment_sgrid = linspace(crit.sbound(1), crit.sbound(2), crit.m_g(1))';
+para.moment_kgrid = linspace(crit.kbound(1), crit.kbound(2), crit.m_g(2))';
 crit.m_g(3) = crit.m_g(1) * crit.m_g(2);
 para.ggrid = zeros(crit.m_g(3), 2);
 tmp = repmat(para.moment_sgrid', crit.m_g(2), 1);
