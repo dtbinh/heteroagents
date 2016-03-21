@@ -82,3 +82,14 @@ moments_para(2) = para.ggrid(:, 2)' * g_value;
 for i = 3:crit.n_g * (crit.n_g + 3) / 2
     moments_para(i) = ((para.ggrid(:, 1) - moments_para(1)) .^ idx(i, 1) .* ((para.ggrid(:, 2) - moments_para(2)) .^ idx(i, 2)))' * g_value;
 end
+
+% Compare parametrized moments and moments after updating
+tau_mat = reshape(repmat(para.moment_Pi_s', crit.m_g(2), 1), crit.m_g(1), crit.m_g(1) * crit.m_g(2));
+tau_mat = tau_mat';
+
+moments_new = zeros(crit.n_g * (crit.n_g + 3) / 2, 1);
+moments_new(1) = (tau_mat * para.moment_sgrid)' * g_value;
+moments_new(2) = (F_c0_hat_vec .* ka_vec + (1 - F_c0_hat_vec) .* kn_vec)' * g_value;
+for i = 3:crit.n_g * (crit.n_g + 3) / 2
+    moments_new(i) = ((tau_mat * ((para.moment_sgrid - moments_new(1))) .^ idx(i, 1)) .* (F_c0_hat_vec .* (ka_vec - moments_new(2)) .^ idx(i, 2) + (1 - F_c0_hat_vec) .* (kn_vec - moments_new(2)) .^ idx(i, 2)))' * g_value;
+end
