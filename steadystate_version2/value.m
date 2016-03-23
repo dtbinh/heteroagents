@@ -1,14 +1,8 @@
-function res = value(lambda, theta, ka, kn, c0_hat, para, crit)
+function res = value(lambda, theta, ka_vec, para, crit)
     % Solve out new value function
     % Construct intermediate variables
-    F_c0_hat = logncdf(c0_hat, para.mu_c, para.sigma_c);
-    f = @(x)lognpdf(x, para.mu_c, para.sigma_c) .* x;
-    E_c0_hat = zeros(crit.n_s, crit.n_k);
-    for i = 1:crit.n_s
-        for j = 1:crit.n_k
-            E_c0_hat(i, j) = integral(f, 0, c0_hat(i, j));
-        end
-    end
+    [ka, kn, c0_hat, F_c0_hat, E_c0_hat] = otherpolicy(ka_vec, para.sgrid, para.kgrid, para.Pi_s, lambda, theta, para, crit);
+
     coeff = zeros(crit.n_s * crit.n_k, crit.n_s * crit.n_k);
     const = zeros(crit.n_s * crit.n_k, 1);
     Cheby_s = Chebyshev(para.sgrid, crit.n_s, crit.sbound(1), crit.sbound(2));
@@ -40,7 +34,7 @@ function res = value(lambda, theta, ka, kn, c0_hat, para, crit)
                 const((i - 1) * crit.n_k + j) = const((i - 1) * crit.n_k + j) + para.beta * F_c0_hat(i, j) * para.Pi_s(i, k) * sum(sum(Cheby_s(k, :)' * Cheby_ka .* theta));
                 const((i - 1) * crit.n_k + j) = const((i - 1) * crit.n_k + j) + para.beta * (1 - F_c0_hat(i, j)) * para.Pi_s(i, k) * sum(sum(Cheby_s(k, :)' * Cheby_kn .* theta));
             end
-%}            
+%}
         end
     end
     % coeff * theta = const
