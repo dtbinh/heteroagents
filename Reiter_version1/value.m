@@ -1,7 +1,7 @@
 function res = value(lambda, theta, ka_vec, para, crit)
     % Solve out new value function
     % Construct intermediate variables
-    [ka, kn, c0_hat, F_c0_hat, E_c0_hat] = otherpolicy(ka_vec, para.sgrid, para.kgrid, para.Pi_s, lambda, theta, para, crit);
+    [ka, kn, ~, F_c0_hat, E_c0_hat] = otherpolicy(ka_vec, para.sgrid, para.kgrid, para.Pi_s, lambda, theta, para, crit);
 
     coeff = zeros(crit.n_s * crit.n_k, crit.n_s * crit.n_k);
     const = zeros(crit.n_s * crit.n_k, 1);

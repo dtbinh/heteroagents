@@ -24,10 +24,10 @@ para.eta = 2.0;
 
 crit.eps = 1e-8;
 crit.dampen = 0.1;
-crit.kbound = [0.01, 20.0]; % TODO: calculate the upper bound
-crit.m_g = [7, 100]; % s, k
-crit.n_s = 7;
-crit.n_k = 35;
+crit.kbound = [1, 20.0]; % TODO: calculate the upper bound
+crit.m_g = [7, 20]; % s, k
+crit.n_s = 5;
+crit.n_k = 5;
 crit.n_g = 4;
 
 % Compute Rouwenhorst approximations
@@ -47,7 +47,7 @@ clear curv;
 %}
 
 [para.moment_sgrid, para.moment_Pi_s] = Rouwenhorst(para.rho_s, para.sigma_s, crit.m_g(1));
-[para.w_s, ~] = eigs(para.moment_Pi_s', 1);
+[para.w_s, ~] = eigs(para.moment_Pi_s.', 1);
 para.w_s = para.w_s ./ sum(para.w_s);
 %{
 % Compute Gauss-Legendre weights and nodes
@@ -64,3 +64,5 @@ tmp = repmat(para.moment_sgrid', crit.m_g(2), 1);
 para.ggrid(:, 1) = tmp(:);
 para.ggrid(:, 2) = repmat(para.moment_kgrid, crit.m_g(1), 1);
 clear tmp w_s w_k;
+
+save Parameters.mat;

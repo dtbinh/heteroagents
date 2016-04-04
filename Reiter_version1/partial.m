@@ -1,4 +1,4 @@
-lambda = 0.05;
+%lambda = 0.05;
 theta = zeros(crit.n_s, crit.n_k);
 
 err = 1e6;

@@ -22,6 +22,8 @@ function [ka, kn, c0_hat, F_c0_hat, E_c0_hat] = otherpolicy(ka_vec, cur_sgrid, c
             c0_hat(i, j) = c0_hat(i, j) / (lambda * cur_kgrid(j));
         end
     end
+%{
+% This part is for log-normal
     c0_hat = max(c0_hat, crit.eps);
     F_c0_hat = logncdf(c0_hat, para.mu_c, para.sigma_c);
     f = @(x)lognpdf(x, para.mu_c, para.sigma_c) .* x;
@@ -31,4 +33,9 @@ function [ka, kn, c0_hat, F_c0_hat, E_c0_hat] = otherpolicy(ka_vec, cur_sgrid, c
             E_c0_hat(i, j) = integral(f, 0, c0_hat(i, j));
         end
     end
+%}
+% Try a uniform one
+    c0_hat = min(max(c0_hat, 0), para.mu_c);
+    E_c0_hat = c0_hat ./ 2;
+    F_c0_hat = c0_hat ./ para.mu_c;
 end

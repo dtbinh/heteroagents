@@ -11,7 +11,7 @@ tau_mat = reshape(repmat(para.moment_Pi_s', crit.m_g(2), 1), crit.m_g(1), crit.m
 tau_mat = tau_mat';
 w_s_vec = reshape(repmat(para.w_s', crit.m_g(2), 1), crit.m_g(3), 1);
 
-options = optimoptions('fminunc', 'TolX', crit.eps, 'Display', 'off', 'GradObj', 'on');
+options = optimoptions('fminunc', 'TolX', crit.eps, 'Display', 'off', 'MaxFunEvals', 50000, 'GradObj', 'on');
 % Initialize moments with a flat distribution
 moments = zeros(crit.m_g(1), crit.n_g);
 for i = 1:crit.m_g(1)
@@ -54,6 +54,8 @@ while (total_err > 2e-2)
     moments = moments_new;
     iter = iter + 1;
 end
-
+figure(1);
 surf(reshape(g_value .* w_s_vec, crit.m_g(2), crit.m_g(1))');
-plot(reshape(g_value .* w_s_vec, crit.m_g(2), crit.m_g(1)));
+figure(2);
+plot(para.moment_kgrid, reshape(g_value .* w_s_vec, crit.m_g(2), crit.m_g(1)));
+legend('show');

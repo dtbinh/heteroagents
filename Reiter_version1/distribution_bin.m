@@ -34,6 +34,7 @@ for i = 1:crit.m_g(1)
     end
 end
 
+g_value = zeros(crit.m_g(3), 1);
 options = optimoptions('fminunc', 'TolX', crit.eps, 'Display', 'off', 'MaxFunEvals', 50000, 'GradObj', 'on');
 for i = 1:crit.m_g(1)
     tmp_para = zeros(crit.m_g(2), crit.n_g);
@@ -48,3 +49,6 @@ for i = 1:crit.m_g(1)
 end
 figure(2);
 surf(reshape(g_value .* w_s_vec, crit.m_g(2), crit.m_g(1))');
+figure(3);
+plot(para.moment_kgrid, reshape(g_value .* w_s_vec, crit.m_g(2), crit.m_g(1)));
+legend('show');
