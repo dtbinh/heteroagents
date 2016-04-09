@@ -1,6 +1,6 @@
-function [ka, kn, c0_hat, F_c0_hat, E_c0_hat] = otherpolicy_sym(ka_vec_ss, theta_ss, lambda_ss, ka_vec, cur_sgrid, cur_kgrid, cur_Pi, lambda, theta, para, crit)
+function [ka, kn, c0_hat, F_c0_hat, E_c0_hat] = otherpolicy_sym(ka_vec_ss, theta_ss, ka_vec, cur_sgrid, cur_kgrid, cur_Pi, lambda, theta, para, crit)
     % Calculate all the other policy variables from unconstrained capital
-    [~, kn_ss, c0_hat_ss, ~, ~] = otherpolicy(ka_vec_ss, cur_sgrid, cur_kgrid, cur_Pi, lambda_ss, theta_ss, para, crit);
+    [~, kn_ss, c0_hat_ss, ~, ~] = otherpolicy(ka_vec_ss, cur_sgrid, cur_kgrid, cur_Pi, lambda, theta_ss, para, crit);
     k_dim = numel(cur_kgrid);
     s_dim = numel(cur_sgrid);
     % ka and kn

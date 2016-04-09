@@ -3,7 +3,7 @@ function res = Chebyshev_sym(x, order, xmin, xmax)
     % Input for column vector only
     % Output is a matrix mat * order
     x = 2 .* (x - xmin) ./ (xmax - xmin) - 1;
-    res = sym('r_%d_%d', [numel(x) order]);
+    res = sym(zeros(numel(x), order));
     res(:, 1) = 1;
     res(:, 2) = x;
     for i = 3:order

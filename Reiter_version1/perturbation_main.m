@@ -12,30 +12,55 @@ load('SteadyStateResults.mat');
 % Generate equations
 equations;
 
+EX = false(n_equ, n_exo);
+EXP = false(n_equ, n_exo);
+EY = false(n_equ, n_endo);
+EYP = false(n_equ, n_endo);
+
+for i = 1:n_equ
+    tmp_vars = symvar(EQU(i));
+    for j = 1:numel(tmp_vars)
+        tmp = char(tmp_vars(j));
+        if (tmp(1) == 'y')
+            if (tmp(2) == 'p')
+                EYP(i, eval(tmp(3:end))) = 1;
+            else
+                EY(i, eval(tmp(2:end))) = 1;
+            end
+        elseif (tmp(1) == 'x')
+            if (tmp(2) == 'p')
+                EXP(i, eval(tmp(3:end))) = 1;
+            else
+                EX(i, eval(tmp(2:end))) = 1;
+            end
+        end
+    end
+end
+
 % Take first order derivatives
 A = sym(zeros(n_equ, n_equ));
 B = sym(zeros(n_equ, n_equ));
-C = sym(zeros(n_equ, n_shocks));
+% It seems that C is not important...
+% C = sym(zeros(n_equ, n_shocks));
+idxx = linspace(1, n_exo, n_exo);
+idxy = linspace(n_exo + 1, n_equ, n_endo);
 for i = 1:n_equ
-    disp(i);
-    for j = 1:n_exo
-        A(i, j) = diff(EQU(i), XP(j));
-        B(i, j) = diff(EQU(i), X(j));
-    end
-    for j = 1:n_endo
-        A(i, j + n_exo) = diff(EQU(i), YP(j));
-        B(i, j + n_exo) = diff(EQU(i), Y(j));
-    end
-    for j = 1:n_shocks
-        C(i, j) = diff(EQU(i), SHOCK(j));
-    end
+    A(i, idxx(EXP(i, :))) = jacobian(EQU(i), XP(EXP(i, :)));
+    A(i, idxy(EYP(i, :))) = jacobian(EQU(i), YP(EYP(i, :)));
+    B(i, idxx(EX(i, :))) = jacobian(EQU(i), X(EX(i, :)));
+    B(i, idxy(EY(i, :))) = jacobian(EQU(i), Y(EY(i, :)));
 end
-A = double(subs(A, [X, XP, Y, YP, SHOCK], [XSS, XSS, YSS, YSS, SHOCKSS]));
-B = double(subs(B, [X, XP, Y, YP, SHOCK], [XSS, XSS, YSS, YSS, SHOCKSS]));
-C = double(subs(C, [X, XP, Y, YP, SHOCK], [XSS, XSS, YSS, YSS, SHOCKSS]));
+% C = jacobian(EQU, SHOCK);
+
+NA = zeros(n_equ, n_equ);
+NB = zeros(n_equ, n_equ);
+for i = 1:n_equ
+    NA(i, [idxx(EXP(i, :)), idxy(EYP(i, :))]) = double(subs(A(i, [idxx(EXP(i, :)), idxy(EYP(i, :))]), [X(EX(i, :)), XP(EXP(i, :)), Y(EY(i, :)), YP(EYP(i, :)), SHOCK], [XSS(EX(i, :)), XSS(EXP(i, :)), YSS(EY(i, :)), YSS(EYP(i, :)), SHOCKSS]));
+    NB(i, [idxx(EX(i, :)), idxy(EY(i, :))]) = double(subs(B(i, [idxx(EX(i, :)), idxy(EY(i, :))]), [X(EX(i, :)), XP(EXP(i, :)), Y(EY(i, :)), YP(EYP(i, :)), SHOCK], [XSS(EX(i, :)), XSS(EXP(i, :)), YSS(EY(i, :)), YSS(EYP(i, :)), SHOCKSS]));
+end
 
 % Schur decomposition
-[AA, BB, Q, Z] = qz(A, B, 'real');
+[AA, BB, Q, Z] = qz(NA, NB, 'real');
 % TODO: check robustness here
 [AA, BB, Q, Z] = ordqz(AA, BB, Q, Z, 'udo');
 % Check B-K condition. Number of explosive roots should equal
@@ -45,8 +70,8 @@ C = double(subs(C, [X, XP, Y, YP, SHOCK], [XSS, XSS, YSS, YSS, SHOCKSS]));
 % Policies
 Zp = Z';
 g1 = -Zp(n_exo+1:end, n_exo+1:end) \ Zp(n_exo+1:end, 1:n_exo);
-h1 = -(A(1:n_exo, 1:n_exo) + A(1:n_exo, n_exo+1:end) * g1) \ ...
-     (B(1:n_exo, 1:n_exo) + B(1:n_exo, n_exo+1:end) * g1);
+h1 = -(NA(1:n_exo, 1:n_exo) + NA(1:n_exo, n_exo+1:end) * g1) \ ...
+     (NB(1:n_exo, 1:n_exo) + NB(1:n_exo, n_exo+1:end) * g1);
 
 %{
 % Construct second-order equations, linear system

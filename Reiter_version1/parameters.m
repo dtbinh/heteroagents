@@ -24,7 +24,7 @@ para.eta = 2.0;
 
 crit.eps = 1e-8;
 crit.dampen = 0.1;
-crit.kbound = [1, 20.0]; % TODO: calculate the upper bound
+crit.kbound = [1, 15.0]; % TODO: calculate the upper bound
 crit.m_g = [7, 20]; % s, k
 crit.n_s = 5;
 crit.n_k = 5;

@@ -1,9 +1,9 @@
 % General Equilibrium
-% State variables (z, L), Controls (theta, ka, lambda)
+% State variables (z), Controls (theta, ka)
 % y = g(x): policy, x'=h(x): law of motion of states
-n_exo = 1 + crit.m_g(1) * crit.m_g(2); % states
+n_exo = 1; % states
 n_shocks = 1; % shocks (usually, the same number as exo states)
-n_endo = 2 * crit.n_s * crit.n_k + 1; % controls
+n_endo = 2 * crit.n_s * crit.n_k; % controls
 n_equ = n_exo + n_endo;
 
 g1 = zeros(n_endo, n_exo); % 1st-order
@@ -13,10 +13,10 @@ h2 = zeros(n_exo, n_exo, n_exo); % 2nd-order
 
 X = sym('x', [1 n_exo]);
 XP = sym('xp', [1 n_exo]);
-XSS = [0 Dist'];
+XSS = [0];
 Y = sym('y', [1 n_endo]);
 YP = sym('yp', [1 n_endo]);
-YSS = [reshape(theta.', 1, crit.n_s * crit.n_k) ka_vec.' lambda];
+YSS = [reshape(theta.', 1, crit.n_s * crit.n_k) ka_vec.'];
 SHOCK = sym('eps', [1 n_shocks]);
 SHOCKSS = [0];
 
@@ -29,7 +29,7 @@ THETAP = YP(1:crit.n_s * crit.n_k);
 EQU = sym(zeros(n_equ, 1));
 
 % Euler equations
-LHS = vpa(Y(end) * (1 + 2 * para.c1 * (KA.' ./ repmat(para.kgrid, crit.n_s, 1) - (1 - para.delta))));
+LHS = vpa(lambda * (1 + 2 * para.c1 * (KA.' ./ repmat(para.kgrid, crit.n_s, 1) - (1 - para.delta))));
 RHS = sym(zeros(crit.n_s, crit.n_k));
 
 Cheby_s = Chebyshev(para.sgrid, crit.n_s, crit.sbound(1), crit.sbound(2));
@@ -51,7 +51,7 @@ EQUSS = double(subs(EQU(1:crit.n_s * crit.n_k), [X, XP, Y, YP, SHOCK], [XSS, XSS
 disp('Euler done');
 
 % Generate kn, c0_hat, F_c0_hat and E_c0_hat
-[ka, kn, c0_hat, F_c0_hat, E_c0_hat] = otherpolicy_sym(ka_vec, theta, lambda, KA, para.sgrid, para.kgrid, para.Pi_s, Y(end), THETAP, para, crit);
+[ka, kn, c0_hat, F_c0_hat, E_c0_hat] = otherpolicy_sym(ka_vec, theta, KA, para.sgrid, para.kgrid, para.Pi_s, lambda, THETAP, para, crit);
 %{
 % Check SS policy
 [ka_ss, kn_ss, c0_hat_ss, F_c0_hat_ss, E_c0_hat_ss] = otherpolicy(ka_vec, para.sgrid, para.kgrid, para.Pi_s, lambda, theta, para, crit);
@@ -72,9 +72,9 @@ for i = 1:crit.n_s
     for j = 1:crit.n_k
         idx = crit.n_s * crit.n_k + (i - 1) * crit.n_k + j;
         % disp(idx);
-        EQU(idx) = vpa(EQU(idx) - Y(end) * (exp(X(n_exo) + para.sgrid(i)) * para.kgrid(j) ^ para.alpha - para.xi * para.kgrid(j) ^ para.nu + (1 - para.delta) * para.kgrid(j)) ...
-        + Y(end) * F_c0_hat(i, j) * (ka(i, j) + para.c1 * para.kgrid(j) * (ka(i, j) / para.kgrid(j) - (1 - para.delta)) ^ 2 + E_c0_hat(i, j) * para.kgrid(j)) ...
-        + Y(end) * (1 - F_c0_hat(i, j)) * (kn(i, j) + para.c1 * para.kgrid(j) * (kn(i, j) / para.kgrid(j) - (1 - para.delta)) ^ 2));
+        EQU(idx) = vpa(EQU(idx) - lambda * (exp(X(n_exo) + para.sgrid(i)) * para.kgrid(j) ^ para.alpha - para.xi * para.kgrid(j) ^ para.nu + (1 - para.delta) * para.kgrid(j)) ...
+        + lambda * F_c0_hat(i, j) * (ka(i, j) + para.c1 * para.kgrid(j) * (ka(i, j) / para.kgrid(j) - (1 - para.delta)) ^ 2 + E_c0_hat(i, j) * para.kgrid(j)) ...
+        + lambda * (1 - F_c0_hat(i, j)) * (kn(i, j) + para.c1 * para.kgrid(j) * (kn(i, j) / para.kgrid(j) - (1 - para.delta)) ^ 2));
         Cheby_ka = Chebyshev_sym(ka(i, j), crit.n_k, crit.kbound(1), crit.kbound(2));
         Cheby_kn = Chebyshev_sym(kn(i, j), crit.n_k, crit.kbound(1), crit.kbound(2));
         for k = 1:crit.n_s
@@ -90,8 +90,6 @@ end
 EQUSS = double(subs(EQU(crit.n_s * crit.n_k + 1:2 * crit.n_s * crit.n_k), [X, XP, Y, YP, SHOCK], [XSS, XSS, YSS, YSS, SHOCKSS]));
 %}
 disp('Value done');
-
-% Distribution evolve
 
 % Law of motion of aggregate shock
 EQU(2 * crit.n_s * crit.n_k + 1) = XP(n_exo) - para.rho_z * X(n_exo) - para.sigma_z * SHOCK(1);
