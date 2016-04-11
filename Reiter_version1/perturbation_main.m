@@ -73,7 +73,6 @@ g1 = -Zp(n_exo+1:end, n_exo+1:end) \ Zp(n_exo+1:end, 1:n_exo);
 h1 = -(NA(1:n_exo, 1:n_exo) + NA(1:n_exo, n_exo+1:end) * g1) \ ...
      (NB(1:n_exo, 1:n_exo) + NB(1:n_exo, n_exo+1:end) * g1);
 
-%{
 % Construct second-order equations, linear system
 % Put equation dimension in the end for the sake of MATLAB
 Hyp = sym(zeros(n_equ, n_endo));
@@ -81,74 +80,62 @@ Hxp = sym(zeros(n_equ, n_exo));
 Hy = sym(zeros(n_equ, n_endo));
 Hx = sym(zeros(n_equ, n_exo));
 
-Hypyp = sym(zeros(n_endo, n_endo, n_equ));
-Hypy = sym(zeros(n_endo, n_endo, n_equ));
-Hyy = sym(zeros(n_endo, n_endo, n_equ));
+Hypyp = zeros(n_endo, n_endo, n_equ);
+Hypy = zeros(n_endo, n_endo, n_equ);
+Hyy = zeros(n_endo, n_endo, n_equ);
 
-Hypxp = sym(zeros(n_endo, n_exo, n_equ));
-Hypx = sym(zeros(n_endo, n_exo, n_equ));
-Hyxp = sym(zeros(n_endo, n_exo, n_equ));
-Hyx = sym(zeros(n_endo, n_exo, n_equ));
+Hypxp = zeros(n_endo, n_exo, n_equ);
+Hypx = zeros(n_endo, n_exo, n_equ);
+Hyxp = zeros(n_endo, n_exo, n_equ);
+Hyx = zeros(n_endo, n_exo, n_equ);
 
-Hxpxp = sym(zeros(n_exo, n_exo, n_equ));
-Hxpx = sym(zeros(n_exo, n_exo, n_equ));
-Hxx = sym(zeros(n_exo, n_exo, n_equ));
+Hxpxp = zeros(n_exo, n_exo, n_equ);
+Hxpx = zeros(n_exo, n_exo, n_equ);
+Hxx = zeros(n_exo, n_exo, n_equ);
+
+% Generate new index...
+old_idxy = idxy;
+idxy = linspace(1, n_endo, n_endo);
+% For suck MATLAB high order matrix
+anyYP = any(EYP, 2);
+anyY = any(EY, 2);
+anyXP = any(EXP, 2);
+anyX = any(EX, 2);
 
 for i = 1:n_equ
     disp(i);
+    tmp_vars = [X(EX(i, :)), XP(EXP(i, :)), Y(EY(i, :)), YP(EYP(i, :)), SHOCK];
+    tmp_ss = [XSS(EX(i, :)), XSS(EXP(i, :)), YSS(EY(i, :)), YSS(EYP(i, :)), SHOCKSS];
     % X Jacobian
-    for j = 1:n_exo
-        Hxp(i, j) = A(i, j);
-        Hx(i, j) = B(i, j);
-    end
+    Hxp(i, idxx(EXP(i, :))) = A(i, idxx(EXP(i, :)));
+    Hx(i, idxx(EX(i, :))) = B(i, idxx(EX(i, :)));
     % Y Jacobian
-    for j = 1:n_endo
-        Hyp(i, j) = A(i, j + n_exo);
-        Hy(i, j) = B(i, j + n_exo);
+    Hyp(i, idxy(EYP(i, :))) = A(i, old_idxy(EYP(i, :)));
+    Hy(i, idxy(EY(i, :))) = B(i, old_idxy(EY(i, :)));
+    if anyYP(i)
+        Hypyp(idxy(EYP(i, :)), idxy(EYP(i, :)), i) = double(subs(jacobian(Hyp(i, idxy(EYP(i, :))), YP(EYP(i, :))), tmp_vars, tmp_ss));
+        if anyY(i) Hypy(idxy(EYP(i, :)), idxy(EY(i, :)), i) = double(subs(jacobian(Hyp(i, idxy(EYP(i, :))), Y(EY(i, :))), tmp_vars, tmp_ss)); end
+        if anyXP(i) Hypxp(idxy(EYP(i, :)), idxx(EXP(i, :)), i) = double(subs(jacobian(Hyp(i, idxy(EYP(i, :))), XP(EXP(i, :))), tmp_vars, tmp_ss)); end
+        if anyX(i) Hypx(idxy(EYP(i, :)), idxx(EX(i, :)), i) = double(subs(jacobian(Hyp(i, idxy(EYP(i, :))), X(EX(i, :))), tmp_vars, tmp_ss)); end
     end
-    % YYs
-    for j = 1:n_endo
-        for k = 1:n_endo
-            Hypyp(j, k, i) = diff(Hyp(i, j), YP(k));
-            Hypy(j, k, i) = diff(Hyp(i, j), Y(k));
-            Hyy(j, k, i) = diff(Hy(i, j), Y(k));
-        end
+    if anyY(i)
+        Hyy(idxy(EY(i, :)), idxy(EY(i, :)), i) = double(subs(jacobian(Hy(i, idxy(EY(i, :))), Y(EY(i, :))), tmp_vars, tmp_ss));
+        if anyXP(i) Hyxp(idxy(EY(i, :)), idxx(EXP(i, :)), i) = double(subs(jacobian(Hy(i, idxy(EY(i, :))), XP(EXP(i, :))), tmp_vars, tmp_ss)); end
+        if anyX(i) Hyx(idxy(EY(i, :)), idxx(EX(i, :)), i) = double(subs(jacobian(Hy(i, idxy(EY(i, :))), X(EX(i, :))), tmp_vars, tmp_ss)); end
     end
-    % YXs
-    for j = 1:n_endo
-        for k = 1:n_exo
-            Hypxp(j, k, i) = diff(Hyp(i, j), XP(k));
-            Hypx(j, k, i) = diff(Hyp(i, j), X(k));
-            Hyxp(j, k, i) = diff(Hy(i, j), XP(k));
-            Hyx(j, k, i) = diff(Hy(i, j), X(k));
-        end
+    if anyXP(i)
+        Hxpxp(idxx(EXP(i, :)), idxx(EXP(i, :)), i) = double(subs(jacobian(Hxp(i, idxx(EXP(i, :))), XP(EXP(i, :))), tmp_vars, tmp_ss));
+        if anyX(i) Hxpx(idxx(EXP(i, :)), idxx(EX(i, :)), i) = double(subs(jacobian(Hxp(i, idxx(EXP(i, :))), X(EX(i, :))), tmp_vars, tmp_ss)); end
     end
-    % XXs
-    for j = 1:n_exo
-        for k = 1:n_exo
-            Hxpxp(j, k, i) = diff(Hxp(i, j), XP(k));
-            Hxpx(j, k, i) = diff(Hxp(i, j), X(k));
-            Hxx(j, k, i) = diff(Hx(i, j), X(k));
-        end
+    if anyX(i)
+        Hxx(idxx(EX(i, :)), idxx(EX(i, :)), i) = double(subs(jacobian(Hx(i, idxx(EX(i, :))), X(EX(i, :))), tmp_vars, tmp_ss));
     end
+    Hxp(i, idxx(EXP(i, :))) = subs(Hxp(i, idxx(EXP(i, :))), tmp_vars, tmp_ss);
+    Hyp(i, idxy(EYP(i, :))) = subs(Hyp(i, idxy(EYP(i, :))), tmp_vars, tmp_ss);
+    Hy(i, idxy(EY(i, :))) = subs(Hy(i, idxy(EY(i, :))), tmp_vars, tmp_ss);
 end
 
-Hxp = double(subs(Hxp, [X, XP, Y, YP], [XSS, XSS, YSS, YSS]));
-Hyp = double(subs(Hyp, [X, XP, Y, YP], [XSS, XSS, YSS, YSS]));
-Hy = double(subs(Hy, [X, XP, Y, YP], [XSS, XSS, YSS, YSS]));
-
-Hypyp = double(subs(Hypyp, [X, XP, Y, YP], [XSS, XSS, YSS, YSS]));
-Hypy = double(subs(Hypy, [X, XP, Y, YP], [XSS, XSS, YSS, YSS]));
-Hyy = double(subs(Hyy, [X, XP, Y, YP], [XSS, XSS, YSS, YSS]));
-
-Hypxp = double(subs(Hypxp, [X, XP, Y, YP], [XSS, XSS, YSS, YSS]));
-Hypx = double(subs(Hypx, [X, XP, Y, YP], [XSS, XSS, YSS, YSS]));
-Hyxp = double(subs(Hyxp, [X, XP, Y, YP], [XSS, XSS, YSS, YSS]));
-Hyx = double(subs(Hyx, [X, XP, Y, YP], [XSS, XSS, YSS, YSS]));
-
-Hxpxp = double(subs(Hxpxp, [X, XP, Y, YP], [XSS, XSS, YSS, YSS]));
-Hxpx = double(subs(Hxpx, [X, XP, Y, YP], [XSS, XSS, YSS, YSS]));
-Hxx = double(subs(Hxx, [X, XP, Y, YP], [XSS, XSS, YSS, YSS]));
+Hxp = double(Hxp); Hyp = double(Hyp); Hy = double(Hy);
 
 % Tranpose all the other matrices
 for i = 1:n_equ
@@ -303,4 +290,4 @@ h_sigma = res(1:n_exo, 1);
 g_sigma = res(n_equ - n_endo + 1:end, 1);
 
 %save RESULTS.mat g1 g2 h1 h2 g_sigma h_sigma;
-%}
+
