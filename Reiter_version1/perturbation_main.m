@@ -1,5 +1,4 @@
 % Solve the dynamic model
-% Distribution using bins
 clc;
 clear;
 
@@ -12,6 +11,7 @@ load('SteadyStateResults.mat');
 % Generate equations
 equations;
 
+% Record all the variables used
 EX = false(n_equ, n_exo);
 EXP = false(n_equ, n_exo);
 EY = false(n_equ, n_endo);
@@ -45,6 +45,7 @@ B = sym(zeros(n_equ, n_equ));
 idxx = linspace(1, n_exo, n_exo);
 idxy = linspace(n_exo + 1, n_equ, n_endo);
 for i = 1:n_equ
+    disp(i);
     A(i, idxx(EXP(i, :))) = jacobian(EQU(i), XP(EXP(i, :)));
     A(i, idxy(EYP(i, :))) = jacobian(EQU(i), YP(EYP(i, :)));
     B(i, idxx(EX(i, :))) = jacobian(EQU(i), X(EX(i, :)));
@@ -55,26 +56,29 @@ end
 NA = zeros(n_equ, n_equ);
 NB = zeros(n_equ, n_equ);
 for i = 1:n_equ
+    disp(i);
     NA(i, [idxx(EXP(i, :)), idxy(EYP(i, :))]) = double(subs(A(i, [idxx(EXP(i, :)), idxy(EYP(i, :))]), [X(EX(i, :)), XP(EXP(i, :)), Y(EY(i, :)), YP(EYP(i, :)), SHOCK], [XSS(EX(i, :)), XSS(EXP(i, :)), YSS(EY(i, :)), YSS(EYP(i, :)), SHOCKSS]));
     NB(i, [idxx(EX(i, :)), idxy(EY(i, :))]) = double(subs(B(i, [idxx(EX(i, :)), idxy(EY(i, :))]), [X(EX(i, :)), XP(EXP(i, :)), Y(EY(i, :)), YP(EYP(i, :)), SHOCK], [XSS(EX(i, :)), XSS(EXP(i, :)), YSS(EY(i, :)), YSS(EYP(i, :)), SHOCKSS]));
 end
 
-% Schur decomposition
-[AA, BB, Q, Z] = qz(NA, NB, 'real');
-% TODO: check robustness here
-[AA, BB, Q, Z] = ordqz(AA, BB, Q, Z, 'udo');
+% Schur decomposition, Q'*AA*Z'=NA, Q'*BB*Z'=NB
+% NA(abs(NA) < crit.eps) = 0;
+% NB(abs(NB) < crit.eps) = 0;
+[AA, BB, Q, Z] = qz(NA, NB);
+sel = (abs(diag(AA)) > (1 - crit.eps) .* abs(diag(BB)));
+[AA, BB, Q, Z] = ordqz(AA, BB, Q, Z, sel);
 % Check B-K condition. Number of explosive roots should equal
 % forward-looking varibles
-% disp(sum(abs(ordeig(BB, AA)) > 1));
+% disp(n_exo - sum(sel));
 
 % Policies
 Zp = Z';
 g1 = -Zp(n_exo+1:end, n_exo+1:end) \ Zp(n_exo+1:end, 1:n_exo);
-h1 = -(NA(1:n_exo, 1:n_exo) + NA(1:n_exo, n_exo+1:end) * g1) \ ...
+% disp(max(max(abs(imag(g1)))));
+g1 = real(g1);
+h1 = pinv(-(NA(1:n_exo, 1:n_exo) + NA(1:n_exo, n_exo+1:end) * g1)) * ...
      (NB(1:n_exo, 1:n_exo) + NB(1:n_exo, n_exo+1:end) * g1);
 
-% Construct second-order equations, linear system
-% Put equation dimension in the end for the sake of MATLAB
 Hyp = sym(zeros(n_equ, n_endo));
 Hxp = sym(zeros(n_equ, n_exo));
 Hy = sym(zeros(n_equ, n_endo));
@@ -149,7 +153,7 @@ end
 
 % equations are (h,g) coeff * UNKNOWN + const = 0
 const = zeros(n_equ * n_exo * n_exo, 1);
-coeff = zeros(n_equ * n_exo * n_exo, n_equ * n_exo * n_exo);
+coeff = sparse(n_equ * n_exo * n_exo, n_equ * n_exo * n_exo);
 
 for i = 1:n_equ
     for j = 1:n_exo
@@ -290,4 +294,3 @@ h_sigma = res(1:n_exo, 1);
 g_sigma = res(n_equ - n_endo + 1:end, 1);
 
 %save RESULTS.mat g1 g2 h1 h2 g_sigma h_sigma;
-
