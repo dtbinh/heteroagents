@@ -78,7 +78,7 @@ g1 = real(g1);
 h1 = pinv(-(NA(1:n_exo, 1:n_exo) + NA(1:n_exo, n_exo+1:end) * g1)) * ...
      (NB(1:n_exo, 1:n_exo) + NB(1:n_exo, n_exo+1:end) * g1);
 disp('First order done');
- 
+
 Hyp = sym(zeros(n_equ, n_endo));
 Hxp = sym(zeros(n_equ, n_exo));
 Hy = sym(zeros(n_equ, n_endo));
@@ -140,6 +140,7 @@ end
 clear old_idxy;
 
 Hxp = double(Hxp); Hyp = double(Hyp); Hy = double(Hy);
+save NECESSARY.mat Hxp Hyp Hy Hypyp Hypy Hypxp Hypx Hyy Hyxp Hyx Hxpxp Hxpx Hxx EYP EY EXP EX g1 h1 n_exo n_endo n_shocks n_equ;
 
 % Tranpose all the other matrices
 Hxpyp = permute(Hypxp, [2 1 3]);
@@ -204,6 +205,7 @@ for i = 1:n_endo
         end
     end
 end
+disp('Second order first part done');
 
 % Construct second-order equations for sigma
 eta = zeros(n_exo, n_shocks);
