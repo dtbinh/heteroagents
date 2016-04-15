@@ -45,7 +45,7 @@ B = sym(zeros(n_equ, n_equ));
 idxx = linspace(1, n_exo, n_exo);
 idxy = linspace(n_exo + 1, n_equ, n_endo);
 for i = 1:n_equ
-    disp(i);
+    % disp(i);
     A(i, idxx(EXP(i, :))) = jacobian(EQU(i), XP(EXP(i, :)));
     A(i, idxy(EYP(i, :))) = jacobian(EQU(i), YP(EYP(i, :)));
     B(i, idxx(EX(i, :))) = jacobian(EQU(i), X(EX(i, :)));
@@ -56,15 +56,14 @@ end
 NA = zeros(n_equ, n_equ);
 NB = zeros(n_equ, n_equ);
 for i = 1:n_equ
-    disp(i);
+    % disp(i);
     NA(i, [idxx(EXP(i, :)), idxy(EYP(i, :))]) = double(subs(A(i, [idxx(EXP(i, :)), idxy(EYP(i, :))]), [X(EX(i, :)), XP(EXP(i, :)), Y(EY(i, :)), YP(EYP(i, :)), SHOCK], [XSS(EX(i, :)), XSS(EXP(i, :)), YSS(EY(i, :)), YSS(EYP(i, :)), SHOCKSS]));
     NB(i, [idxx(EX(i, :)), idxy(EY(i, :))]) = double(subs(B(i, [idxx(EX(i, :)), idxy(EY(i, :))]), [X(EX(i, :)), XP(EXP(i, :)), Y(EY(i, :)), YP(EYP(i, :)), SHOCK], [XSS(EX(i, :)), XSS(EXP(i, :)), YSS(EY(i, :)), YSS(EYP(i, :)), SHOCKSS]));
 end
 
 % Schur decomposition, Q'*AA*Z'=NA, Q'*BB*Z'=NB
-% NA(abs(NA) < crit.eps) = 0;
-% NB(abs(NB) < crit.eps) = 0;
 [AA, BB, Q, Z] = qz(NA, NB);
+% TODO: maybe sort here to satisfy B-K?
 sel = (abs(diag(AA)) > (1 - crit.eps) .* abs(diag(BB)));
 [AA, BB, Q, Z] = ordqz(AA, BB, Q, Z, sel);
 % Check B-K condition. Number of explosive roots should equal
@@ -78,7 +77,8 @@ g1 = -Zp(n_exo+1:end, n_exo+1:end) \ Zp(n_exo+1:end, 1:n_exo);
 g1 = real(g1);
 h1 = pinv(-(NA(1:n_exo, 1:n_exo) + NA(1:n_exo, n_exo+1:end) * g1)) * ...
      (NB(1:n_exo, 1:n_exo) + NB(1:n_exo, n_exo+1:end) * g1);
-
+disp('First order done');
+ 
 Hyp = sym(zeros(n_equ, n_endo));
 Hxp = sym(zeros(n_equ, n_exo));
 Hy = sym(zeros(n_equ, n_endo));
@@ -105,7 +105,6 @@ anyYP = any(EYP, 2);
 anyY = any(EY, 2);
 anyXP = any(EXP, 2);
 anyX = any(EX, 2);
-
 for i = 1:n_equ
     disp(i);
     tmp_vars = [X(EX(i, :)), XP(EXP(i, :)), Y(EY(i, :)), YP(EYP(i, :)), SHOCK];
@@ -138,49 +137,50 @@ for i = 1:n_equ
     Hyp(i, idxy(EYP(i, :))) = subs(Hyp(i, idxy(EYP(i, :))), tmp_vars, tmp_ss);
     Hy(i, idxy(EY(i, :))) = subs(Hy(i, idxy(EY(i, :))), tmp_vars, tmp_ss);
 end
+clear old_idxy;
 
 Hxp = double(Hxp); Hyp = double(Hyp); Hy = double(Hy);
 
 % Tranpose all the other matrices
-for i = 1:n_equ
-    Hxpyp = permute(Hypxp, [2 1 3]);
-    Hxpy = permute(Hyxp, [2 1 3]);
-    Hxyp = permute(Hypx, [2 1 3]);
-    Hxy = permute(Hyx, [2 1 3]);
-    Hyyp = permute(Hypy, [2 1 3]);
-    Hxxp = permute(Hxpx, [2 1 3]);
-end
+Hxpyp = permute(Hypxp, [2 1 3]);
+Hxpy = permute(Hyxp, [2 1 3]);
+Hxyp = permute(Hypx, [2 1 3]);
+Hxy = permute(Hyx, [2 1 3]);
+Hyyp = permute(Hypy, [2 1 3]);
+Hxxp = permute(Hxpx, [2 1 3]);
 
 % equations are (h,g) coeff * UNKNOWN + const = 0
 const = zeros(n_equ * n_exo * n_exo, 1);
 coeff = sparse(n_equ * n_exo * n_exo, n_equ * n_exo * n_exo);
 
 for i = 1:n_equ
+    disp(i);
+    YPIND = idxy(EYP(i, :));
+    YIND = idxy(EY(i, :));
+    XPIND = idxx(EXP(i, :));
+    XIND = idxx(EX(i, :));
     for j = 1:n_exo
         for k = 1:n_exo
             idx = (i - 1) * n_exo * n_exo + (j - 1) * n_exo + k;
-            t1 = (Hypyp(:, :, i) * g1 * h1(:, k) + Hypy(:, :, i) * g1(:, k) + Hypxp(:, :, i) * h1(:, k) + Hypx(:, k, i))' * (g1 * h1(:, j));
-            t2 = (Hyyp(:, :, i) * g1 * h1(:, k) + Hyy(:, :, i) * g1(:, k) + Hyxp(:, :, i) * h1(:, k) + Hyx(:, k, i))' * g1(:, j);
-            t3 = (Hxpyp(:, :, i) * g1 * h1(:, k) + Hxpy(:, :, i) * g1(:, k) + Hxpxp(:, :, i) * h1(:, k) + Hxpx(:, k, i))' * h1(:, j);
-            t4 = Hxyp(j, :, i) * g1 * h1(:, k) + Hxy(j, :, i) * g1(:, k) + Hxxp(j, :, i) * h1(:, k) + Hxx(j, k, i);
-            const(idx, 1) = t1 + t2 + t3 + t4;
+            tmpgh = g1(YPIND, :) * h1(:, k);
+            t1 = (Hypyp(YPIND, YPIND, i) * tmpgh + Hypy(YPIND, YIND, i) * g1(YIND, k) + Hypxp(YPIND, XPIND, i) * h1(XPIND, k) + Hypx(YPIND, k, i))' * (g1(YPIND, :) * h1(:, j));
+            t2 = (Hyyp(YIND, YPIND, i) * tmpgh + Hyy(YIND, YIND, i) * g1(YIND, k) + Hyxp(YIND, XPIND, i) * h1(XPIND, k) + Hyx(YIND, k, i))' * g1(YIND, j);
+            t3 = (Hxpyp(XPIND, YPIND, i) * tmpgh + Hxpy(XPIND, YIND, i) * g1(YIND, k) + Hxpxp(XPIND, XPIND, i) * h1(XPIND, k) + Hxpx(XPIND, k, i))' * h1(XPIND, j);
+            t4 = Hxyp(j, YPIND, i) * tmpgh + Hxy(j, YIND, i) * g1(YIND, k) + Hxxp(j, XPIND, i) * h1(XPIND, k) + Hxx(j, k, i);
+            const(idx) = t1 + t2 + t3 + t4;
 
-            for tmp = 1:n_endo
-                for t1 = 1:n_exo
-                    for t2 = 1:n_exo
-                        coeff(idx, (n_exo + tmp - 1) * n_exo * n_exo + (t1 - 1) * n_exo + t2) = ...
-                        coeff(idx, (n_exo + tmp - 1) * n_exo * n_exo + (t1 - 1) * n_exo + t2) + Hyp(i, tmp) * h1(t2, k) * h1(t1, j);
-                    end
-                end
+            for tmp = idxy(EYP(i, :))
+                coeff(idx, (n_exo + tmp - 1) * n_exo * n_exo + 1:(n_exo + tmp) * n_exo * n_exo) = ...
+                coeff(idx, (n_exo + tmp - 1) * n_exo * n_exo + 1:(n_exo + tmp) * n_exo * n_exo) + Hyp(i, tmp) * reshape(h1(:, k) * h1(:, j)', 1, n_exo * n_exo);
             end
 
-            for tmp = 1:n_endo
+            for tmp = idxy(EY(i, :))
                 coeff(idx, (n_exo + tmp - 1) * n_exo * n_exo + (j - 1) * n_exo + k) = ...
                 coeff(idx, (n_exo + tmp - 1) * n_exo * n_exo + (j - 1) * n_exo + k) + Hy(i, tmp);
             end
 
             for tmp = 1:n_exo
-                tmpres = Hyp(i, :) * g1(:, tmp);
+                tmpres = Hyp(i, YPIND) * g1(YPIND, tmp);
                 coeff(idx, (tmp - 1) * n_exo * n_exo + (j - 1) * n_exo + k) = tmpres + Hxp(i, tmp);
             end
         end
